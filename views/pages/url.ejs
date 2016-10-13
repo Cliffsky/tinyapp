@@ -1,0 +1,15 @@
+<% include ../partials/head.ejs %>
+<% include ../partials/header.ejs %>
+
+<body>
+<% for (var key in urls) { %>
+<div>
+  <%= urls[key] %>
+    <a href="localhost:8080/u/<%= key %>">localhost:8080/u/<%= key %></a>
+    <form method="GET" action="/url/<%= key %>/update"><button class="post">update</button></form>&nbsp;
+    <form method="POST" action="/url/<%= key %>/delete"><button class="post">delete</button></form>
+</div>
+<% } %>
+
+<% include ../partials/clapton %>
+</body>
