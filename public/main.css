@@ -14,6 +14,7 @@ header {
 
 form {
   display: inline;
+  vertical-align:0%;
 }
 
 span.logo a {
@@ -23,10 +24,6 @@ span.logo a {
 span.user a{
   line-height:1.2;
   color: #fff;
-}
-
-form {
-  vertical-align:0%;
 }
 
 input {

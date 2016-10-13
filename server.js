@@ -2,6 +2,7 @@
 
 const express = require('express');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const methodOverride = require('method-override');
 const fs = require('fs');
 
@@ -10,6 +11,9 @@ const fs = require('fs');
 const app = express();
 app.use(bodyParser.urlencoded( { extended: false }));
 app.use(express.static('public'));
+app.use(cookieParser());
+
+// Load or Init database
 
 var urlDb;
 fs.readFile('urls', (err, data) => {
@@ -35,36 +39,54 @@ app.set('port', process.env.port || 8080);
 
 /* Routes */
 
-// C reate
+// Login
 
-// R ead
-
-app.get(`/`, (req, res) => {
-  res.render("pages/index");
-});
-
-app.get(`/url`, (req, res) => {
-  let urls = urlDb;
-  res.render(`pages/url`, { urls });
+app.post('/login', (req, res) => {
+  res.cookie('userName', req.body.userName, { maxAge: 86400 } );
+  res.redirect('/');
 })
+
+// Logout
+
+app.post('/logout', (req, res) => {
+  res.clearCookie('userName');
+  res.redirect('/');
+})
+
+// C reate
 
 app.post(`/url`, (req, res) => {
   let short = generateRandomString()
   urlDb[short] = req.body.longURL;
   fs.writeFile('urls', JSON.stringify(urlDb), (err, data) => {
   })
-  res.redirect(`/url/${short}`);
+  res.redirect(`/url`);
 })
 
-app.get(`/url/:id`, (req, res) => {
-  let urls = urlDb;
-  res.render(`pages/url`, { urls } );
+// R ead
+
+app.get(`/`, (req, res) => {
+  let templateVars = {
+    userName: req.cookies["userName"],
+  }
+  res.render("pages/index", { templateVars});
+});
+
+app.get(`/url`, (req, res) => {
+  let templateVars = {
+    userName: req.cookies["userName"],
+    'urls': urlDb,
+   };
+  res.render(`pages/url`, { templateVars });
 })
 
 app.get(`/u/:id`, (req, res) => {
-  let longURL = urlDb[req.params.id];
-  if (longURL) {
-    res.redirect(longURL);
+  let templateVars = {
+    userName: req.cookies["userName"],
+    'long' : urlDb[req.params.id],
+  };
+  if (templateVars.long) {
+    res.redirect(templateVars.long);
   } else {
     res.redirect(`/`);
   }
@@ -72,10 +94,17 @@ app.get(`/u/:id`, (req, res) => {
 
 // U pdate
 
+app.get(`/url/:id`, (req, res) => {
+  res.redirect(`url/req.body.id/update`);
+})
+
 app.get(`/url/:id/update`, (req, res) => {
-  let short = req.params.id;
-  let long = urlDb[req.params.id];
-  res.render(`pages/update`, { short, long } );
+  let templateVars = {
+    userName: req.cookies["userName"],
+    short: req.params.id,
+    long: urlDb[req.params.id]
+  };
+  res.render(`pages/update`, { templateVars } );
 })
 
 app.post(`/url/:id/update`, (req, res) => {

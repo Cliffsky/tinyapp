@@ -1,7 +1,7 @@
 <% include ../partials/head.ejs %>
 <% include ../partials/header.ejs %>
-  <%= short %>
-  <form action="/url/<%= short %>/update" method="POST" style="padding-left:10px;">
-    <input id="longURL" type="text" name="longURL" placeholder="<%= long %>">
+  http://www.tinyapp.com/<%= templateVars.short %>
+  <form action="/url/<%= templateVars.short %>/update" method="POST" style="padding-left:10px;">
+    <input id="longURL" type="text" name="longURL" placeholder="<%= templateVars.long %>">
     <input id="submit" type="submit" value="Submit">
   </form>
