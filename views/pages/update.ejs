@@ -1,7 +1,14 @@
 <% include ../partials/head.ejs %>
 <% include ../partials/header.ejs %>
-  http://www.tinyapp.com/<%= templateVars.short %>
-  <form method="POST" action="/urls/<%= templateVars.short %>?_method=UPDATE" style="padding-left:10px;">
-    <input id="longURL" type="text" name="longURL" placeholder="<%= templateVars.urlDb[templateVars.short].long %>">
+  http://www.tinyapp.com/<%= short %>
+  Views: <%= urlDb[short].views %>
+  <form method="POST" action="/urls/<%= short %>?_method=UPDATE" style="padding-left:10px;">
+    <input id="longURL" type="text" name="longURL" placeholder="<%= urlDb[short].long %>">
     <input id="submit" type="submit" value="Submit">
   </form>
+  <div>
+    <ul>
+      <% for (var i = 0; i < urlDb[short].viewerIds.length; i += 1) { %>
+      <li><%= urlDb[short].viewerIds[i] %></li>
+      <% } %>
+    </ul>

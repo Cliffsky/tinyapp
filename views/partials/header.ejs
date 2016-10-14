@@ -3,7 +3,7 @@
         <a href="/">TinyApp</a>
     </span>
     <span>
-    <% if (templateVars.userId) { %>
+    <% if (userId) { %>
     <form action="/urls" method="POST" style = "padding-left: 10px;">
             <input id="longURL" type="text" name="longURL" placeholder="http://" value="http://">
             <input id="submit" type="submit" value="Submit">
@@ -11,8 +11,8 @@
     <% } %>
     </span>
     <span class="user">
-    <% if (templateVars.userId) { %>
-        Hi <%= templateVars.userDb[templateVars.userId].email.split("@")[0] %>!
+    <% if (userId) { %>
+        Hi <%= userDb[userId].email.split("@")[0] %>!
         <form action="/logout" method="POST">
         <input id="submit" type="submit" value="Logout">
         </form>

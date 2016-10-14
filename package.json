@@ -16,6 +16,10 @@
   "author": "nicolas boisvert",
   "license": "ISC",
   "devDependencies": {
-    "eslint-plugin-es6-recommended": "^0.1.2"
+    "eslint": "^3.7.1",
+    "eslint-config-standard": "^6.2.0",
+    "eslint-plugin-es6-recommended": "^0.1.2",
+    "eslint-plugin-promise": "^3.0.0",
+    "eslint-plugin-standard": "^2.0.1"
   }
 }

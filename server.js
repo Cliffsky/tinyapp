@@ -4,13 +4,22 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const validUrl = require('valid-url');
 const cookieSession = require('cookie-session');
+const cookieParser = require('cookie-parser');
 const methodOverride = require('method-override');
 const bcrypt = require('bcrypt');
 const fs = require('fs');
 
-// Set constants
+// Declare app
 
 const app = express();
+
+// Set config
+
+app.set('view engine', 'ejs');
+app.set('port', process.env.port || 8080);
+
+// Set constants
+
 app.use(bodyParser.urlencoded( { extended: false }));
 app.use(methodOverride('_method'));
 app.use(express.static('public'));
@@ -21,38 +30,39 @@ app.use(cookieSession({
 
 // Load or Init database
 
-var userDb;
-fs.readFile('userDb', (err, data) => {
-  if (err) {
-    userDb = {};
-  } else {
-    if (Object.keys(JSON.parse(data)).length !== 0) {
-      userDb = JSON.parse(data);
-    } else {
-      userDb = {};
-    }
-  }
-})
+var userDb = {};
+var userData = fs.readFileSync('userDb');
 
-var urlDb;
-fs.readFile('urlDb', (err, data) => {
-  if (err) {
-    urlDb = {};
-  } else {
-    if (Object.keys(JSON.parse(data)).length !== 0){
-      urlDb = JSON.parse(data);
-    } else {
-      urlDb = {};
-    }
-  }
-})
+let jUserData = JSON.parse(userData);
+if (Object.keys(jUserData).length) {
+  userDb = jUserData;
+}
 
-// Set config
 
-app.set('view engine', 'ejs');
-app.set('port', process.env.port || 8080);
+var urlDb = {};
+var urlData = fs.readFileSync('urlDb');
+
+let jUrlData = JSON.parse(urlData);
+if (Object.keys(jUrlData).length) {
+  urlDb = jUrlData;
+}
 
 /* Routes */
+
+// Root
+
+app.get(`/`, (req, res) => {
+  let templateVars = {
+    userDb: userDb,
+    urlDb: urlDb,
+    userId: req.session.user_id
+  };
+  if (templateVars.userId) {
+    res.redirect("/urls");
+  } else {
+    res.render("pages/index", templateVars);
+  }
+});
 
 // Login
 
@@ -62,8 +72,8 @@ app.get('/login', (req, res) => {
     urlDb: urlDb,
     userId: req.session.user_id
   };
-  res.render('pages/login', { templateVars })
-})
+  res.render('pages/login', templateVars);
+});
 
 app.post('/login', (req, res) => {
   let retrievedUser = findUser(req.body.email);
@@ -72,20 +82,19 @@ app.post('/login', (req, res) => {
     res.redirect(`/error/403`);
   } else if (bcrypt.compareSync(req.body.password, userDb[retrievedUser].password)) {
     req.session.user_id = retrievedUser;
-    console.log('hey');
     res.redirect('/urls');
   } else {
     res.status(403);
     res.redirect(`/error/403`);
   }
-})
+});
 
 // Logout
 
 app.post('/logout', (req, res) => {
-  req.session.user_id="";
+  req.session.user_id = "";
   res.redirect('/');
-})
+});
 
 // Register
 
@@ -94,9 +103,9 @@ app.get('/register', (req, res) => {
     userDb: userDb,
     urlDb: urlDb,
     userId: req.session.user_id
-   };
-  res.render('pages/register', { templateVars });
-})
+  };
+  res.render('pages/register', templateVars);
+});
 
 app.post('/register', (req, res) => {
   let userId = 'user' + generateRandomString();
@@ -109,27 +118,25 @@ app.post('/register', (req, res) => {
       id: userId,
       email: req.body.email.toLowerCase(),
       password: bcrypt.hashSync(req.body.password, bcrypt.genSaltSync(10))
-    }
-    fs.writeFile('userDb', JSON.stringify(userDb), (err, data) => {
-    });
+    };
+    fs.writeFile('userDb', JSON.stringify(userDb));
     req.session.user_id = userId;
   }
   res.redirect('/');
-})
+});
 
 // C reate
 
 app.post(`/urls`, (req, res) => {
   if (validUrl.isUri(req.body.longURL)) {
-    let short = generateRandomString()
-    urlDb[short] = { long: req.body.longURL, userId: req.session.user_id };
-    fs.writeFile('urlDb', JSON.stringify(urlDb), (err, data) => {
-    })
+    let short = generateRandomString();
+    urlDb[short] = { long: req.body.longURL, userId: req.session.user_id, views: 0, viewerIds: [] };
+    fs.writeFile('urlDb', JSON.stringify(urlDb));
     res.redirect(`/urls`);
   } else {
-    res.redirect(`/error/400`)
+    res.redirect(`/error/400`);
   }
-})
+});
 
 // R ead
 
@@ -139,10 +146,15 @@ app.get(`/urls`, (req, res) => {
     urlDb: urlDb,
     userId: req.session.user_id
   };
-  res.render(`pages/url`, { templateVars });
-})
+  res.render(`pages/url`, templateVars);
+});
 
 app.get(`/u/:id`, (req, res) => {
+  urlDb[req.params.id].views += 1;
+  if (req.session.user_id && !urlDb[req.params.id].viewerIds.find((element) => { return element === req.session.user_id })) {
+    urlDb[req.params.id].viewerIds.push(req.session.user_id);
+  }
+  fs.writeFile('urlDb', JSON.stringify(urlDb));
   let templateVars = {
     userDb: userDb,
     urlDb: urlDb,
@@ -165,68 +177,47 @@ app.get(`/urls/:id/update`, (req, res) => {
     short: req.params.id
   };
   if (req.session.user_id === urlDb[req.params.id].userId) {
-    res.render(`pages/update`, { templateVars } );
+    res.render(`pages/update`, templateVars );
   } else {
     res.redirect(`/error/404`);
   }
-})
+});
 
 app.put(`/urls/:id`, (req, res) => {
   if (req.session.user_id === urlDb[req.params.id].userId) {
     urlDb[req.params.id] = req.body.longURL;
-    fs.writeFile('urlDb', JSON.stringify(urlDb), (err, data) => {
-    })
-  res.redirect(`/urls`);
+    fs.writeFile('urlDb', JSON.stringify(urlDb));
+    res.redirect(`/urls`);
   } else {
     res.redirect(`/error/404`);
   }
-})
+});
 
 // D elete
 
 app.delete(`/urls/:id`, (req, res) => {
   if (req.session.user_id === urlDb[req.params.id].userId) {
     delete urlDb[req.params.id];
-    fs.writeFile('urlDb', JSON.stringify(urlDb), (err, data) => {
-    })
-  res.redirect(`/urls`);
+    fs.writeFile('urlDb', JSON.stringify(urlDb));
+    res.redirect(`/urls`);
   } else {
     res.redirect(`/error/404`);
   }
-})
+});
 
 // E rror
 
 app.get('/error/:id', (req, res) => {
   let templateVars = {
-    error: req.params.id,
-  }
-  res.status(req.params.id);
-  res.render('pages/error', { templateVars });
-})
-
-// Get it rolling
-
-
-app.get(`/`, (req, res) => {
-  let templateVars = {
-    userDb: userDb,
-    urlDb: urlDb,
-    userId: req.session.user_id
+    error: req.params.id
   };
-  if (templateVars.userId) {
-    res.redirect("/urls");
-  } else {
-    res.render("pages/index", { templateVars });
-  }
+  res.status(req.params.id);
+  res.render('pages/error', templateVars);
 });
-
 
 // Listener
 
-app.listen(app.get(`port`), () => {
-  console.log(`Listening on port ${app.get('port')}.`);
-});
+app.listen(app.get(`port`));
 
 // Methods
 
@@ -242,12 +233,12 @@ function generateAlphaNumericChar(){
   let char;
   char = Math.random();
   // Conditional chain in place to ensure no non-alphaNumeric characters get returned
-  if(char < 10/62) {
-    char = 48 + Math.floor(char*62);
-  } else if (char >= 10/62 && char < 36/62) {
-    char = 55 + Math.floor(char*62);
-  } else if (char >= 36/62) {
-    char = 61 + Math.floor(char*62);
+  if(char < 10 / 62) {
+    char = 48 + Math.floor(char * 62);
+  } else if (char >= 10 / 62 && char < 36 / 62) {
+    char = 55 + Math.floor(char * 62);
+  } else if (char >= 36 / 62) {
+    char = 61 + Math.floor(char * 62);
   }
   return String.fromCharCode(char);
 }
