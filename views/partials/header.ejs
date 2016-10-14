@@ -3,20 +3,21 @@
         <a href="/">TinyApp</a>
     </span>
     <span>
+    <% if (templateVars.userId) { %>
     <form action="/url" method="POST" style = "padding-left: 10px;">
             <input id="longURL" type="text" name="longURL" placeholder="http://">
             <input id="submit" type="submit" value="Submit">
         </form>
+    <% } %>
     </span>
     <span class="user">
-    <% if (templateVars.userName) { %>
-        Hi <%= templateVars.userName %>!
+    <% if (templateVars.userId) { %>
+        Hi <%= templateVars.userDb[templateVars.userId].email.split("@")[0] %>!
         <form action="/logout" method="POST">
         <input id="submit" type="submit" value="Logout">
         </form>
     <% } else { %>
-        <form action="/login" method="POST">
-            <input id="userName" type="text" name="userName" placeholder="User Name">
+        <form action="/login" method="GET">
             <input id="submit" type="submit" value="Login">
         </form>
         <form action="/register" method="GET" style="padding-right:10px">

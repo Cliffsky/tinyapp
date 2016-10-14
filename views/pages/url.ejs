@@ -2,12 +2,14 @@
 <% include ../partials/header.ejs %>
 
 <body>
-<% for (var key in templateVars.urls) { %>
+<% for (var key in templateVars.urlDb) { %>
 <div>
-  <%= templateVars.urls[key] %>
-    <a href="<%= templateVars.urls[key] %>">localhost:8080/u/<%= key %></a>
-    <form method="GET" action="/url/<%= key %>/update"><button class="post">update</button></form>&nbsp;
-    <form method="POST" action="/url/<%= key %>/delete"><button class="post">delete</button></form>
+     <% if (templateVars.userId === templateVars.urlDb[key].userId) { %>
+    <%= templateVars.urlDb[key].long %>
+      <a href="<%= templateVars.urlDb[key].long %>">localhost:8080/u/<%= key %></a>
+      <form method="GET" action="/url/<%= key %>/update"><button class="post">update</button></form>&nbsp;
+      <form method="POST" action="/url/<%= key %>/delete"><button class="post">delete</button></form>
+    <% } %>
 </div>
 <% } %>
 

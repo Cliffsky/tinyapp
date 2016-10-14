@@ -2,8 +2,9 @@
 
 const express = require('express');
 const bodyParser = require('body-parser');
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const methodOverride = require('method-override');
+const bcrypt = require('bcrypt');
 const fs = require('fs');
 
 // Set constants
@@ -11,22 +12,40 @@ const fs = require('fs');
 const app = express();
 app.use(bodyParser.urlencoded( { extended: false }));
 app.use(express.static('public'));
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'userId',
+  keys: ['userId']
+}));
 
 // Load or Init database
 
+var userDb;
+fs.readFile('userDb', (err, data) => {
+  if (err) {
+    userDb = {};
+  } else {
+    if (Object.keys(JSON.parse(data)).length !== 0) {
+      userDb = JSON.parse(data);
+    } else {
+      userDb = {};
+    }
+  }
+})
+
 var urlDb;
-fs.readFile('urls', (err, data) => {
+fs.readFile('urlDb', (err, data) => {
   if (err) {
     urlDb = {
-      "b2xVn2": "http://www.lighthouselabs.ca", "9sm5xK": "http://www.google.com"
+      "b2xVn2": {long: "http://www.lighthouselabs.ca", userId: "user000000"},
+      "9sm5xK": {long: "http://www.google.com", userId: "user000000"}
     }
   } else {
     if (Object.keys(JSON.parse(data)).length !== 0){
       urlDb = JSON.parse(data);
     } else {
       urlDb = {
-      "b2xVn2": "http://www.lighthouselabs.ca", "9sm5xK": "http://www.google.com"
+        "b2xVn2": {long: "http://www.lighthouselabs.ca", userId: "user000000"},
+        "9sm5xK": {long: "http://www.google.com", userId: "user000000"}
       }
     }
   }
@@ -41,15 +60,62 @@ app.set('port', process.env.port || 8080);
 
 // Login
 
+app.get('/login', (req, res) => {
+  let templateVars = {
+    userDb: userDb,
+    urlDb: urlDb,
+    userId: req.session.user_id
+  };
+  res.render('pages/login', { templateVars })
+})
+
 app.post('/login', (req, res) => {
-  res.cookie('userName', req.body.userName, { maxAge: 86400 } );
-  res.redirect('/');
+  let retrievedUser = findUser(req.body.email);
+  if (retrievedUser === -1) {
+    res.status(403);
+    res.redirect('/');
+  } else if (bcrypt.compareSync(userDb[retrievedUser].password, req.body.password)) {
+    req.session.user_id = retrievedUser;
+    console.log('hey');
+    res.redirect('/url');
+  } else {
+    res.status(403);
+    res.redirect('/');
+  }
 })
 
 // Logout
 
 app.post('/logout', (req, res) => {
-  res.clearCookie('userName');
+  req.session.user_id="";
+  res.redirect('/');
+})
+
+// Register
+
+app.get('/register', (req, res) => {
+  let templateVars = {
+    userDb: userDb,
+    urlDb: urlDb,
+    userId: req.session.user_id
+   };
+  res.render('pages/register', { templateVars });
+})
+
+app.post('/register', (req, res) => {
+  let userId = 'user' + generateRandomString();
+  if (findUser(req.body.email) !== -1) {
+    res.status(400);
+  } else {
+    userDb[userId] = {
+      id: userId,
+      email: req.body.email.toLowerCase(),
+      password: bcrypt.hashSync(req.body.password, bcrypt.genSaltSync(10))
+    }
+    fs.writeFile('userDb', JSON.stringify(userDb), (err, data) => {
+    });
+    req.session.user_id = userId;
+  }
   res.redirect('/');
 })
 
@@ -57,36 +123,31 @@ app.post('/logout', (req, res) => {
 
 app.post(`/url`, (req, res) => {
   let short = generateRandomString()
-  urlDb[short] = req.body.longURL;
-  fs.writeFile('urls', JSON.stringify(urlDb), (err, data) => {
+  urlDb[short] = { long: req.body.longURL, userId: req.session.user_id };
+  fs.writeFile('urlDb', JSON.stringify(urlDb), (err, data) => {
   })
   res.redirect(`/url`);
 })
 
 // R ead
 
-app.get(`/`, (req, res) => {
-  let templateVars = {
-    userName: req.cookies["userName"],
-  }
-  res.render("pages/index", { templateVars});
-});
-
 app.get(`/url`, (req, res) => {
   let templateVars = {
-    userName: req.cookies["userName"],
-    'urls': urlDb,
-   };
+    userDb: userDb,
+    urlDb: urlDb,
+    userId: req.session.user_id
+  };
   res.render(`pages/url`, { templateVars });
 })
 
 app.get(`/u/:id`, (req, res) => {
   let templateVars = {
-    userName: req.cookies["userName"],
-    'long' : urlDb[req.params.id],
+    userDb: userDb,
+    urlDb: urlDb,
+    userId: req.session.user_id
   };
-  if (templateVars.long) {
-    res.redirect(templateVars.long);
+  if (templateVars.urlDb[req.params.id]) {
+    res.redirect(templateVars.urlDb[req.params.id].long);
   } else {
     res.redirect(`/`);
   }
@@ -94,36 +155,51 @@ app.get(`/u/:id`, (req, res) => {
 
 // U pdate
 
-app.get(`/url/:id`, (req, res) => {
-  res.redirect(`url/req.body.id/update`);
-})
-
 app.get(`/url/:id/update`, (req, res) => {
   let templateVars = {
-    userName: req.cookies["userName"],
-    short: req.params.id,
-    long: urlDb[req.params.id]
+    userDb: userDb,
+    urlDb: urlDb,
+    userId: req.session.user_id
   };
-  res.render(`pages/update`, { templateVars } );
+  if (req.session.user_id === urlDb[req.params.id].userId) {
+    res.render(`pages/update`, { templateVars } );
+  } else {
+    res.redirect('/');
+  }
 })
 
 app.post(`/url/:id/update`, (req, res) => {
-  urlDb[req.params.id] = req.body.longURL;
-  fs.writeFile('urls', JSON.stringify(urlDb), (err, data) => {
-  })
+  if (req.session.user_id === urlDb[req.params.id].userId) {
+    urlDb[req.params.id] = req.body.longURL;
+    fs.writeFile('urlDb', JSON.stringify(urlDb), (err, data) => {
+    })
+  }
   res.redirect(`/url`);
 })
 
 // D elete
 
 app.post(`/url/:id/delete`, (req, res) => {
-  delete urlDb[req.params.id];
-  fs.writeFile('urls', JSON.stringify(urlDb), (err, data) => {
-  })
+  if (req.session.user_id === urlDb[req.params.id].userId) {
+    delete urlDb[req.params.id];
+    fs.writeFile('urlDb', JSON.stringify(urlDb), (err, data) => {
+    })
+  }
   res.redirect(`/url`);
 })
 
 // Get it rolling
+
+
+app.get(`/`, (req, res) => {
+  let templateVars = {
+    userDb: userDb,
+    urlDb: urlDb,
+    userId: req.session.user_id
+  };
+  res.render("pages/index", { templateVars });
+});
+
 
 // Listener
 
@@ -153,4 +229,17 @@ function generateAlphaNumericChar(){
     char = 61 + Math.floor(char*62);
   }
   return String.fromCharCode(char);
+}
+
+function findUser(email) {
+  let output;
+  for(var key in userDb) {
+    if(userDb[key].email === email) {
+      output = key;
+    }
+  }
+  if(!output) {
+    output = -1;
+  }
+  return output;
 }
