@@ -14,5 +14,8 @@
     "app"
   ],
   "author": "nicolas boisvert",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "eslint-plugin-es6-recommended": "^0.1.2"
+  }
 }

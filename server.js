@@ -2,6 +2,7 @@
 
 const express = require('express');
 const bodyParser = require('body-parser');
+const validUrl = require('valid-url');
 const cookieSession = require('cookie-session');
 const methodOverride = require('method-override');
 const bcrypt = require('bcrypt');
@@ -11,6 +12,7 @@ const fs = require('fs');
 
 const app = express();
 app.use(bodyParser.urlencoded( { extended: false }));
+app.use(methodOverride('_method'));
 app.use(express.static('public'));
 app.use(cookieSession({
   name: 'userId',
@@ -35,18 +37,12 @@ fs.readFile('userDb', (err, data) => {
 var urlDb;
 fs.readFile('urlDb', (err, data) => {
   if (err) {
-    urlDb = {
-      "b2xVn2": {long: "http://www.lighthouselabs.ca", userId: "user000000"},
-      "9sm5xK": {long: "http://www.google.com", userId: "user000000"}
-    }
+    urlDb = {};
   } else {
     if (Object.keys(JSON.parse(data)).length !== 0){
       urlDb = JSON.parse(data);
     } else {
-      urlDb = {
-        "b2xVn2": {long: "http://www.lighthouselabs.ca", userId: "user000000"},
-        "9sm5xK": {long: "http://www.google.com", userId: "user000000"}
-      }
+      urlDb = {};
     }
   }
 })
@@ -73,14 +69,14 @@ app.post('/login', (req, res) => {
   let retrievedUser = findUser(req.body.email);
   if (retrievedUser === -1) {
     res.status(403);
-    res.redirect('/');
-  } else if (bcrypt.compareSync(userDb[retrievedUser].password, req.body.password)) {
+    res.redirect(`/error/403`);
+  } else if (bcrypt.compareSync(req.body.password, userDb[retrievedUser].password)) {
     req.session.user_id = retrievedUser;
     console.log('hey');
-    res.redirect('/url');
+    res.redirect('/urls');
   } else {
     res.status(403);
-    res.redirect('/');
+    res.redirect(`/error/403`);
   }
 })
 
@@ -106,6 +102,8 @@ app.post('/register', (req, res) => {
   let userId = 'user' + generateRandomString();
   if (findUser(req.body.email) !== -1) {
     res.status(400);
+    res.redirect(`/error/400`);
+
   } else {
     userDb[userId] = {
       id: userId,
@@ -121,17 +119,21 @@ app.post('/register', (req, res) => {
 
 // C reate
 
-app.post(`/url`, (req, res) => {
-  let short = generateRandomString()
-  urlDb[short] = { long: req.body.longURL, userId: req.session.user_id };
-  fs.writeFile('urlDb', JSON.stringify(urlDb), (err, data) => {
-  })
-  res.redirect(`/url`);
+app.post(`/urls`, (req, res) => {
+  if (validUrl.isUri(req.body.longURL)) {
+    let short = generateRandomString()
+    urlDb[short] = { long: req.body.longURL, userId: req.session.user_id };
+    fs.writeFile('urlDb', JSON.stringify(urlDb), (err, data) => {
+    })
+    res.redirect(`/urls`);
+  } else {
+    res.redirect(`/error/400`)
+  }
 })
 
 // R ead
 
-app.get(`/url`, (req, res) => {
+app.get(`/urls`, (req, res) => {
   let templateVars = {
     userDb: userDb,
     urlDb: urlDb,
@@ -149,43 +151,58 @@ app.get(`/u/:id`, (req, res) => {
   if (templateVars.urlDb[req.params.id]) {
     res.redirect(templateVars.urlDb[req.params.id].long);
   } else {
-    res.redirect(`/`);
+    res.redirect(`/error/404`);
   }
 });
 
 // U pdate
 
-app.get(`/url/:id/update`, (req, res) => {
+app.get(`/urls/:id/update`, (req, res) => {
   let templateVars = {
     userDb: userDb,
     urlDb: urlDb,
-    userId: req.session.user_id
+    userId: req.session.user_id,
+    short: req.params.id
   };
   if (req.session.user_id === urlDb[req.params.id].userId) {
     res.render(`pages/update`, { templateVars } );
   } else {
-    res.redirect('/');
+    res.redirect(`/error/404`);
   }
 })
 
-app.post(`/url/:id/update`, (req, res) => {
+app.put(`/urls/:id`, (req, res) => {
   if (req.session.user_id === urlDb[req.params.id].userId) {
     urlDb[req.params.id] = req.body.longURL;
     fs.writeFile('urlDb', JSON.stringify(urlDb), (err, data) => {
     })
+  res.redirect(`/urls`);
+  } else {
+    res.redirect(`/error/404`);
   }
-  res.redirect(`/url`);
 })
 
 // D elete
 
-app.post(`/url/:id/delete`, (req, res) => {
+app.delete(`/urls/:id`, (req, res) => {
   if (req.session.user_id === urlDb[req.params.id].userId) {
     delete urlDb[req.params.id];
     fs.writeFile('urlDb', JSON.stringify(urlDb), (err, data) => {
     })
+  res.redirect(`/urls`);
+  } else {
+    res.redirect(`/error/404`);
   }
-  res.redirect(`/url`);
+})
+
+// E rror
+
+app.get('/error/:id', (req, res) => {
+  let templateVars = {
+    error: req.params.id,
+  }
+  res.status(req.params.id);
+  res.render('pages/error', { templateVars });
 })
 
 // Get it rolling
@@ -197,7 +214,11 @@ app.get(`/`, (req, res) => {
     urlDb: urlDb,
     userId: req.session.user_id
   };
-  res.render("pages/index", { templateVars });
+  if (templateVars.userId) {
+    res.redirect("/urls");
+  } else {
+    res.render("pages/index", { templateVars });
+  }
 });
 
 

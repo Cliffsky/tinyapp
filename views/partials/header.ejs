@@ -4,8 +4,8 @@
     </span>
     <span>
     <% if (templateVars.userId) { %>
-    <form action="/url" method="POST" style = "padding-left: 10px;">
-            <input id="longURL" type="text" name="longURL" placeholder="http://">
+    <form action="/urls" method="POST" style = "padding-left: 10px;">
+            <input id="longURL" type="text" name="longURL" placeholder="http://" value="http://">
             <input id="submit" type="submit" value="Submit">
         </form>
     <% } %>
