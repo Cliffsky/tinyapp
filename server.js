@@ -187,7 +187,7 @@ app.get(`/urls/:id/update`, (req, res) => {
 
 app.put(`/urls/:id`, (req, res) => {
   if (req.session.user_id === urlDb[req.params.id].userId) {
-    urlDb[req.params.id] = req.body.longURL;
+    urlDb[req.params.id].long = req.body.longURL;
     fs.writeFile('urlDb', JSON.stringify(urlDb));
     res.redirect(`/urls`);
   } else {
