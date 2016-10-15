@@ -2,17 +2,17 @@
 <% include ../partials/header.ejs %>
 
 <body>
-<% for (var key in urlDb) { %>
-<div>
-     <% if (userId === urlDb[key].userId) { %>
-      <%= urlDb[key].long %>
-      <a href="//localhost:8080/u/<%= key %>">localhost:8080/u/<%= key %></a>
-      Views: <%= urlDb[key].views %>
-      <form method="GET" action="/urls/<%= key %>/update"><button class="post">update</button></form>&nbsp;
-      <form method="POST" action="/urls/<%= key %>?_method=DELETE"><button class="post">delete</button></form>
+  <ul>
+    <% for (var key in urlDb) { %>
+      <li>
+        <% if (userId === urlDb[key].userId) { %>
+          <%= urlDb[key].long %><br>
+          <a href="//localhost:8080/u/<%= key %>">localhost:8080/u/<%= key %></a>
+          Views: <%= urlDb[key].views %>
+          <form method="GET" action="/urls/<%= key %>/update"><button class="post">update</button></form>&nbsp;
+          <form method="POST" action="/urls/<%= key %>?_method=DELETE"><button class="post">delete</button></form>
+        <% } %>
+      </li><br>
     <% } %>
-</div>
-<% } %>
-
-<% include ../partials/clapton %>
+  </ul>
 </body>

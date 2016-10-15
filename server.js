@@ -28,6 +28,8 @@ app.use(cookieSession({
   keys: ['userId']
 }));
 
+//
+
 // Load or Init database
 
 var userDb = {};
@@ -52,6 +54,7 @@ if (Object.keys(jUrlData).length) {
 // Root
 
 app.get(`/`, (req, res) => {
+  res.
   let templateVars = {
     userDb: userDb,
     urlDb: urlDb,
