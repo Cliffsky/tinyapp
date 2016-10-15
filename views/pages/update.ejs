@@ -3,7 +3,7 @@
   http://www.tinyapp.com/<%= short %>
   Views: <%= urlDb[short].views %>
   <form method="POST" action="/urls/<%= short %>?_method=PUT" style="padding-left:10px;">
-    <input id="longURL" type="text" name="longURL" placeholder="<%= urlDb[short].long %>" value="http://">
+    <input id="longURL" type="text" name="longURL" placeholder="<%= urlDb[short].long %>">
     <input id="submit" type="submit" value="Submit">
   </form>
   <div>
