@@ -54,7 +54,6 @@ if (Object.keys(jUrlData).length) {
 // Root
 
 app.get(`/`, (req, res) => {
-  res.
   let templateVars = {
     userDb: userDb,
     urlDb: urlDb,
